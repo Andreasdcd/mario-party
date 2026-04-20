@@ -1,0 +1,37 @@
+{
+  "boards": [
+    {
+      "id": "classic_01",
+      "name": "Classic Board",
+      "description": "The original board layout",
+      "tileCount": 25,
+      "tiles": [
+        { "position": 0, "type": "START" },
+        { "position": 1, "type": "SAFE" },
+        { "position": 2, "type": "SAFE" },
+        { "position": 3, "type": "PENALTY" },
+        { "position": 4, "type": "CHALLENGE" },
+        { "position": 5, "type": "SAFE" },
+        { "position": 6, "type": "EVENT" },
+        { "position": 7, "type": "SAFE" },
+        { "position": 8, "type": "CHALLENGE" },
+        { "position": 9, "type": "SAFE" },
+        { "position": 10, "type": "PENALTY" },
+        { "position": 11, "type": "SAFE" },
+        { "position": 12, "type": "SAFE" },
+        { "position": 13, "type": "EVENT" },
+        { "position": 14, "type": "CHALLENGE" },
+        { "position": 15, "type": "SAFE" },
+        { "position": 16, "type": "PENALTY" },
+        { "position": 17, "type": "SAFE" },
+        { "position": 18, "type": "SAFE" },
+        { "position": 19, "type": "CHALLENGE" },
+        { "position": 20, "type": "SAFE" },
+        { "position": 21, "type": "EVENT" },
+        { "position": 22, "type": "PENALTY" },
+        { "position": 23, "type": "SAFE" },
+        { "position": 24, "type": "SAFE" }
+      ]
+    }
+  ]
+}
