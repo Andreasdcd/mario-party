@@ -19,8 +19,8 @@ export const GAME_RULES = {
 };
 
 export const TILE_REWARDS = {
-  SAFE_COINS: 3,
-  PENALTY_COINS: -2,
+  SAFE_COINS: 5,      // Green tiles: +5 coins
+  PENALTY_COINS: -5,  // Red tiles: -5 coins (cannot go below 0)
   CHALLENGE_WIN_COINS: 5,
   CHALLENGE_LOSE_COINS: -2,
   SHOP_STAR_COST: 10

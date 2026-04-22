@@ -6,6 +6,9 @@ import * as Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { SetupScene } from './scenes/SetupScene';
 import { GameScene } from './scenes/GameScene';
+import { MathSprintScene } from './scenes/MathSprintScene';
+import { TeamMemoryScene } from './scenes/TeamMemoryScene';
+import { TheGauntletScene } from './scenes/TheGauntletScene';
 import { GAME_CONFIG } from './utils/Constants';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -14,7 +17,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: GAME_CONFIG.HEIGHT,
   backgroundColor: GAME_CONFIG.BACKGROUND_COLOR,
   parent: 'game-container',
-  scene: [BootScene, SetupScene, GameScene],
+  scene: [BootScene, SetupScene, GameScene, MathSprintScene, TeamMemoryScene, TheGauntletScene],
   dom: {
     createContainer: true
   },

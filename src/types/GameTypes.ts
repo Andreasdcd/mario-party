@@ -15,6 +15,10 @@ export enum GamePhase {
   ROLL_PHASE = 'ROLL_PHASE',
   MOVE_PHASE = 'MOVE_PHASE',
   TILE_PHASE = 'TILE_PHASE',
+  ROUND_SUMMARY = 'ROUND_SUMMARY',        // After all 4 players finished turn
+  MINIGAME_INTRO = 'MINIGAME_INTRO',      // Team assignment
+  MINIGAME_PLAY = 'MINIGAME_PLAY',        // Playing mini-game
+  MINIGAME_RESULT = 'MINIGAME_RESULT',    // Show results
   CHALLENGE_PHASE = 'CHALLENGE_PHASE',
   EVENT_PHASE = 'EVENT_PHASE',
   GAME_OVER = 'GAME_OVER'
@@ -39,6 +43,8 @@ export interface Player {
   coins: number;
   stars: number;
   color: number; // Hex color for player token
+  isNPC: boolean;
+  difficulty?: 'easy' | 'medium' | 'hard'; // Only for NPCs
 }
 
 export interface Tile {

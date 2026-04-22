@@ -8,6 +8,8 @@ import { GAME_RULES, PLAYER_COLORS } from '../utils/Constants';
 interface PlayerSetup {
   name: string;
   color: number;
+  isNPC: boolean;
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 export class GameStateManager {
@@ -37,7 +39,9 @@ export class GameStateManager {
       position: 0,
       coins: GAME_RULES.STARTING_COINS,
       stars: GAME_RULES.STARTING_STARS,
-      color: setup.color
+      color: setup.color,
+      isNPC: setup.isNPC,
+      difficulty: setup.difficulty
     }));
   }
 
@@ -55,7 +59,9 @@ export class GameStateManager {
       position: 0,
       coins: GAME_RULES.STARTING_COINS,
       stars: GAME_RULES.STARTING_STARS,
-      color: colors[i]
+      color: colors[i],
+      isNPC: false,
+      difficulty: undefined
     }));
   }
 
@@ -118,44 +124,46 @@ export class GameStateManager {
       { x: 1340, y: 740 }    // 34 - Near finish
     ];
 
-    // Define tile types - balanced distribution for 35 tiles
+    // Define tile types - 75% SAFE (green), 25% PENALTY (red)
+    // 35 tiles total: ~26 SAFE, ~9 PENALTY
     const tileTypes = [
       TileType.START,        // 0
       TileType.SAFE,         // 1
       TileType.SAFE,         // 2
-      TileType.PENALTY,      // 3
-      TileType.SAFE,         // 4
-      TileType.CHALLENGE,    // 5
+      TileType.SAFE,         // 3
+      TileType.PENALTY,      // 4
+      TileType.SAFE,         // 5
       TileType.SAFE,         // 6
       TileType.SAFE,         // 7
-      TileType.EVENT,        // 8
-      TileType.SAFE,         // 9
-      TileType.PENALTY,      // 10
+      TileType.SAFE,         // 8
+      TileType.PENALTY,      // 9
+      TileType.SAFE,         // 10
       TileType.SAFE,         // 11
-      TileType.CHALLENGE,    // 12
-      TileType.SAFE,         // 13
+      TileType.SAFE,         // 12
+      TileType.PENALTY,      // 13
       TileType.SAFE,         // 14
-      TileType.EVENT,        // 15
+      TileType.SAFE,         // 15
       TileType.SAFE,         // 16
-      TileType.PENALTY,      // 17
-      TileType.SAFE,         // 18
+      TileType.SAFE,         // 17
+      TileType.PENALTY,      // 18
       TileType.SAFE,         // 19
-      TileType.CHALLENGE,    // 20
+      TileType.SAFE,         // 20
       TileType.SAFE,         // 21
-      TileType.SAFE,         // 22
-      TileType.EVENT,        // 23
+      TileType.PENALTY,      // 22
+      TileType.SAFE,         // 23
       TileType.SAFE,         // 24
-      TileType.PENALTY,      // 25
+      TileType.SAFE,         // 25
       TileType.SAFE,         // 26
-      TileType.CHALLENGE,    // 27
+      TileType.PENALTY,      // 27
       TileType.SAFE,         // 28
       TileType.SAFE,         // 29
-      TileType.EVENT,        // 30
-      TileType.SAFE,         // 31
-      TileType.PENALTY,      // 32
+      TileType.SAFE,         // 30
+      TileType.PENALTY,      // 31
+      TileType.SAFE,         // 32
       TileType.SAFE,         // 33
-      TileType.CHALLENGE     // 34
+      TileType.PENALTY       // 34
     ];
+    // Total: 1 START + 26 SAFE + 8 PENALTY = 35 tiles (74% SAFE, 23% PENALTY)
 
     // Build tiles array with coordinates
     const tiles = pathCoordinates.map((coord, index) => ({
@@ -164,6 +172,9 @@ export class GameStateManager {
       x: coord.x,
       y: coord.y
     }));
+
+    // Ensure tiles are sorted by position (should already be, but let's be explicit)
+    tiles.sort((a, b) => a.position - b.position);
 
     return {
       id: 'adventure_park_board',
@@ -212,9 +223,17 @@ export class GameStateManager {
     if (!player) return;
 
     const boardSize = this.state.board.tiles.length;
-    player.position = (player.position + spaces) % boardSize;
+    const oldPosition = player.position; // Save old position BEFORE moving
+    const newPosition = (player.position + spaces) % boardSize;
 
-    this.emit('PLAYER_MOVED', { playerId, newPosition: player.position, spaces });
+    player.position = newPosition;
+
+    this.emit('PLAYER_MOVED', {
+      playerId,
+      oldPosition,  // Now we include the starting position
+      newPosition,
+      spaces
+    });
   }
 
   public addCoins(playerId: number, amount: number): void {

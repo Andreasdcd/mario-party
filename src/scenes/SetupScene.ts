@@ -8,10 +8,12 @@ import { PLAYER_COLORS } from '../utils/Constants';
 interface PlayerSetup {
   name: string;
   color: number;
+  isNPC: boolean;
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 export class SetupScene extends Phaser.Scene {
-  private playerCount: number = 2;
+  private readonly PLAYER_COUNT: number = 4; // Always 4 players
   private playerSetups: PlayerSetup[] = [];
   private inputFields: Phaser.GameObjects.DOMElement[] = [];
   private selectedColors: Set<number> = new Set();
@@ -34,140 +36,89 @@ export class SetupScene extends Phaser.Scene {
     const centerX = this.cameras.main.width / 2;
 
     // Title
-    this.add.text(centerX, 60, 'BOARD GAME PARTY', {
+    this.add.text(centerX, 40, 'BOARD GAME PARTY', {
       fontSize: '48px',
       color: '#2c3e50',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    this.add.text(centerX, 110, 'Spiller Setup', {
+    this.add.text(centerX, 90, '4 Spillere Setup', {
       fontSize: '24px',
       color: '#7f8c8d'
     }).setOrigin(0.5);
 
-    // Player count selector
-    this.createPlayerCountSelector();
+    // Initialize player setups for 4 players
+    for (let i = 0; i < this.PLAYER_COUNT; i++) {
+      this.playerSetups[i] = {
+        name: '',
+        color: this.availableColors[i].color,
+        isNPC: false,
+        difficulty: 'medium'
+      };
+      this.selectedColors.add(this.availableColors[i].color);
+    }
 
-    // Player setup forms (will be created based on playerCount)
+    // Player setup forms (always 4)
     this.createPlayerForms();
 
     // Start button
     this.createStartButton();
 
     // Error message text
-    this.errorText = this.add.text(centerX, 650, '', {
+    this.errorText = this.add.text(centerX, 680, '', {
       fontSize: '16px',
       color: '#e74c3c'
     }).setOrigin(0.5);
 
-    console.log('SetupScene: Ready for player configuration');
+    console.log('SetupScene: Ready for 4 player configuration');
   }
 
-  private createPlayerCountSelector(): void {
-    const centerX = this.cameras.main.width / 2;
-    const y = 160;
-
-    this.add.text(centerX, y, 'Antal Spillere:', {
-      fontSize: '20px',
-      color: '#34495e'
-    }).setOrigin(0.5);
-
-    // Create buttons for 2, 3, 4 players
-    const buttonY = y + 40;
-    const spacing = 80;
-    const startX = centerX - spacing * 1.5;
-
-    for (let i = 2; i <= 4; i++) {
-      const x = startX + (i - 2) * spacing;
-      const button = this.add.text(x, buttonY, i.toString(), {
-        fontSize: '24px',
-        color: this.playerCount === i ? '#ffffff' : '#2c3e50',
-        backgroundColor: this.playerCount === i ? '#3498db' : '#ecf0f1',
-        padding: { x: 20, y: 10 }
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-      button.on('pointerdown', () => {
-        this.setPlayerCount(i);
-      });
-
-      button.on('pointerover', () => {
-        if (this.playerCount !== i) {
-          button.setBackgroundColor('#bdc3c7');
-        }
-      });
-
-      button.on('pointerout', () => {
-        if (this.playerCount !== i) {
-          button.setBackgroundColor('#ecf0f1');
-        }
-      });
-    }
-  }
-
-  private setPlayerCount(count: number): void {
-    this.playerCount = count;
-
-    // Clear existing forms
-    this.inputFields.forEach(field => field.destroy());
-    this.inputFields = [];
-    this.playerSetups = [];
-    this.selectedColors.clear();
-
-    // Recreate forms with new count
-    this.createPlayerForms();
-
-    // Recreate player count buttons to update colors
-    this.scene.restart();
-  }
 
   private createPlayerForms(): void {
     const centerX = this.cameras.main.width / 2;
-    const startY = 260;
-    const formHeight = 90;
+    const startY = 140;
+    const formHeight = 120;
 
-    for (let i = 0; i < this.playerCount; i++) {
+    for (let i = 0; i < this.PLAYER_COUNT; i++) {
       const y = startY + i * formHeight;
 
       // Player label
-      this.add.text(centerX - 280, y, `Spiller ${i + 1}:`, {
+      this.add.text(centerX - 500, y, `Spiller ${i + 1}:`, {
         fontSize: '18px',
         color: '#2c3e50',
         fontStyle: 'bold'
       });
 
       // Name input
-      this.add.text(centerX - 280, y + 25, 'Navn:', {
+      this.add.text(centerX - 500, y + 25, 'Navn:', {
         fontSize: '14px',
         color: '#7f8c8d'
       });
 
-      const nameInput = this.createInputField(centerX - 220, y + 20, 150, i, 'name');
+      const nameInput = this.createInputField(centerX - 440, y + 45, 150, i);
       this.inputFields.push(nameInput);
 
       // Color selector
-      this.add.text(centerX + 0, y + 25, 'Farve:', {
+      this.add.text(centerX - 260, y + 30, 'Farve:', {
         fontSize: '14px',
         color: '#7f8c8d'
       });
 
-      this.createColorSelector(i, centerX + 60, y + 15);
+      this.createColorSelector(i, centerX - 200, y + 20);
 
-      // Initialize player setup
-      this.playerSetups[i] = {
-        name: '',
-        color: this.availableColors[i].color // Default color
-      };
-      this.selectedColors.add(this.availableColors[i].color);
+      // NPC Checkbox
+      this.createNPCCheckbox(i, centerX - 60, y + 25);
+
+      // Difficulty dropdown (only shown if NPC)
+      this.createDifficultyDropdown(i, centerX + 150, y + 25);
     }
   }
 
-  private createInputField(x: number, y: number, width: number, playerIndex: number, field: 'name'): Phaser.GameObjects.DOMElement {
+  private createInputField(x: number, y: number, width: number, playerIndex: number): Phaser.GameObjects.DOMElement {
     const input = this.add.dom(x, y).createFromHTML(`
       <input
         type="text"
-        id="player${playerIndex}_${field}"
+        id="player${playerIndex}_name"
         placeholder="Indtast navn"
         style="
           width: ${width}px;
@@ -188,6 +139,92 @@ export class SetupScene extends Phaser.Scene {
     });
 
     return input;
+  }
+
+  private createNPCCheckbox(playerIndex: number, x: number, y: number): void {
+    // Label
+    this.add.text(x, y + 5, 'NPC:', {
+      fontSize: '14px',
+      color: '#7f8c8d'
+    });
+
+    // Checkbox
+    const checkbox = this.add.dom(x + 50, y).createFromHTML(`
+      <input
+        type="checkbox"
+        id="player${playerIndex}_npc"
+        style="
+          width: 20px;
+          height: 20px;
+          cursor: pointer;
+        "
+      />
+    `);
+
+    const checkboxElement = checkbox.node.querySelector('input') as HTMLInputElement;
+    checkboxElement.addEventListener('change', () => {
+      this.playerSetups[playerIndex].isNPC = checkboxElement.checked;
+
+      if (checkboxElement.checked) {
+        // Auto-generate NPC name
+        this.playerSetups[playerIndex].name = `CPU ${playerIndex + 1}`;
+
+        // Update input field
+        const nameInput = document.getElementById(`player${playerIndex}_name`) as HTMLInputElement;
+        if (nameInput) {
+          nameInput.value = `CPU ${playerIndex + 1}`;
+          nameInput.disabled = true;
+        }
+
+        // Show difficulty dropdown
+        const difficultySelect = document.getElementById(`player${playerIndex}_difficulty`) as HTMLSelectElement;
+        if (difficultySelect) {
+          difficultySelect.style.display = 'block';
+        }
+      } else {
+        // Clear NPC name
+        this.playerSetups[playerIndex].name = '';
+
+        // Enable input field
+        const nameInput = document.getElementById(`player${playerIndex}_name`) as HTMLInputElement;
+        if (nameInput) {
+          nameInput.value = '';
+          nameInput.disabled = false;
+        }
+
+        // Hide difficulty dropdown
+        const difficultySelect = document.getElementById(`player${playerIndex}_difficulty`) as HTMLSelectElement;
+        if (difficultySelect) {
+          difficultySelect.style.display = 'none';
+        }
+      }
+    });
+  }
+
+  private createDifficultyDropdown(playerIndex: number, x: number, y: number): void {
+    const dropdown = this.add.dom(x, y).createFromHTML(`
+      <select
+        id="player${playerIndex}_difficulty"
+        style="
+          display: none;
+          padding: 8px;
+          font-size: 14px;
+          border: 2px solid #bdc3c7;
+          border-radius: 4px;
+          font-family: Arial, sans-serif;
+          cursor: pointer;
+        "
+      >
+        <option value="easy">Let</option>
+        <option value="medium" selected>Mellem</option>
+        <option value="hard">Svær</option>
+      </select>
+    `);
+
+    const selectElement = dropdown.node.querySelector('select') as HTMLSelectElement;
+    selectElement.addEventListener('change', () => {
+      this.playerSetups[playerIndex].difficulty = selectElement.value as 'easy' | 'medium' | 'hard';
+    });
   }
 
   private createColorSelector(playerIndex: number, x: number, y: number): void {
@@ -266,11 +303,13 @@ export class SetupScene extends Phaser.Scene {
   }
 
   private validateAndStart(): void {
-    // Check if all players have names
-    for (let i = 0; i < this.playerCount; i++) {
+    // Check if all players have names (human or NPC)
+    for (let i = 0; i < this.PLAYER_COUNT; i++) {
       if (!this.playerSetups[i].name || this.playerSetups[i].name.length < 1) {
-        this.showError(`Spiller ${i + 1} mangler et navn!`);
-        return;
+        if (!this.playerSetups[i].isNPC) {
+          this.showError(`Spiller ${i + 1} mangler et navn!`);
+          return;
+        }
       }
     }
 
@@ -282,17 +321,17 @@ export class SetupScene extends Phaser.Scene {
     }
 
     // Check if all colors are unique
-    if (this.selectedColors.size !== this.playerCount) {
+    if (this.selectedColors.size !== this.PLAYER_COUNT) {
       this.showError('Alle spillere skal have forskellige farver!');
       return;
     }
 
     // All validation passed - start game
-    console.log('Starting game with players:', this.playerSetups);
+    console.log('Starting game with 4 players:', this.playerSetups);
 
     // Pass player data to GameScene
     this.scene.start('GameScene', {
-      playerSetups: this.playerSetups.slice(0, this.playerCount)
+      playerSetups: this.playerSetups
     });
   }
 

@@ -6,20 +6,32 @@ import * as Phaser from 'phaser';
 import { GameStateManager } from '../systems/GameStateManager';
 import { TurnManager } from '../systems/TurnManager';
 import { TileEffectManager } from '../systems/TileEffectManager';
+import { NPCManager } from '../systems/NPCManager';
+import { AnimationManager } from '../systems/AnimationManager';
+import { RoundManager } from '../systems/RoundManager';
+import { MiniGameManager } from '../systems/MiniGameManager';
 import { GameUI } from '../ui/GameUI';
+import { RoundSummaryUI } from '../ui/RoundSummaryUI';
 import { GamePhase } from '../types/GameTypes';
 import { TILE_COLORS } from '../utils/Constants';
 
 interface PlayerSetup {
   name: string;
   color: number;
+  isNPC: boolean;
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 export class GameScene extends Phaser.Scene {
   private gameState!: GameStateManager;
   private turnManager!: TurnManager;
   private tileEffects!: TileEffectManager;
+  private npcManager!: NPCManager;
+  private animationManager!: AnimationManager;
+  private roundManager!: RoundManager;
+  private miniGameManager!: MiniGameManager;
   private gameUI!: GameUI;
+  private roundSummaryUI!: RoundSummaryUI;
   private tileGraphics: Phaser.GameObjects.Graphics[] = [];
   private playerTokens: Phaser.GameObjects.Graphics[] = [];
 
@@ -39,7 +51,12 @@ export class GameScene extends Phaser.Scene {
     this.gameState = new GameStateManager(data.playerSetups);
     this.turnManager = new TurnManager(this.gameState);
     this.tileEffects = new TileEffectManager(this.gameState);
+    this.npcManager = new NPCManager(this.gameState);
+    this.animationManager = new AnimationManager(this, this.gameState);
+    this.roundManager = new RoundManager(this.gameState);
+    this.miniGameManager = new MiniGameManager(this, this.gameState);
     this.gameUI = new GameUI(this);
+    this.roundSummaryUI = new RoundSummaryUI(this);
 
     // Setup camera system
     this.setupCamera();
@@ -88,10 +105,12 @@ export class GameScene extends Phaser.Scene {
 
   private zoomToCurrentPlayer(immediate: boolean = false): void {
     const player = this.gameState.getCurrentPlayer();
-    const board = this.gameState.getState().board;
-    const tile = board.tiles[player.position];
+    const tile = this.gameState.getTileAt(player.position);
 
-    if (!tile) return;
+    if (!tile) {
+      console.error(`Could not find tile at position ${player.position} for zoom`);
+      return;
+    }
 
     if (immediate) {
       // Immediate jump (at game start)
@@ -103,26 +122,65 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupEventListeners(): void {
-    this.gameState.on('PLAYER_MOVED', (data: any) => {
-      console.log(`Player ${data.playerId} moved to position ${data.newPosition}`);
-      this.updatePlayerTokens();
+    // Listen to animation requests from AnimationManager
+    this.events.on('ANIMATE_TOKEN', (data: any) => {
+      const { playerId, targetX, targetY, duration, onComplete } = data;
 
-      // After movement animation completes, resolve tile effect
-      this.time.delayedCall(500, () => {
-        const player = this.gameState.getPlayer(data.playerId);
-        if (player) {
-          const tile = this.gameState.getTileAt(player.position);
-          if (tile) {
-            this.tileEffects.executeTileEffect(player, tile.type);
-            this.gameUI.showMessage(`Landed on ${tile.type} tile!`, 1500);
+      // Find the token graphics for this player
+      const tokenIndex = playerId - 1;
+      if (this.playerTokens[tokenIndex]) {
+        const token = this.playerTokens[tokenIndex];
+
+        // Calculate offset for this player (same as in drawPlayerTokens)
+        const offsetX = ((playerId - 1) % 2) * 20 - 10;
+        const offsetY = (Math.floor((playerId - 1) / 2)) * 20 - 10;
+
+        const finalX = targetX + offsetX;
+        const finalY = targetY + offsetY;
+
+        console.log(`🎯 ANIMATE_TOKEN: Player ${playerId} token from (${token.x}, ${token.y}) to (${finalX}, ${finalY})`);
+
+        // Now we can tween the Graphics object's position!
+        this.tweens.add({
+          targets: token,
+          x: finalX,
+          y: finalY,
+          duration: duration,
+          ease: 'Sine.easeInOut',
+          onComplete: () => {
+            if (onComplete) onComplete();
           }
-        }
-
-        // Wait a moment then end turn
-        this.time.delayedCall(2000, () => {
-          this.endCurrentTurn();
         });
-      });
+      } else if (onComplete) {
+        onComplete();
+      }
+    });
+
+    this.gameState.on('PLAYER_MOVED', (data: any) => {
+      console.log(`Player ${data.playerId} moved ${data.spaces} spaces from ${data.oldPosition} to ${data.newPosition}`);
+
+      // Use AnimationManager for smooth step-by-step animation
+      this.animationManager.animatePlayerMovement(
+        data.playerId,
+        data.oldPosition,  // Use the actual old position from event
+        data.spaces,
+        () => {
+          // After movement animation completes, resolve tile effect
+          const player = this.gameState.getPlayer(data.playerId);
+          if (player) {
+            const tile = this.gameState.getTileAt(player.position);
+            if (tile) {
+              this.tileEffects.executeTileEffect(player, tile.type);
+              this.gameUI.showMessage(`Landet på ${tile.type} felt!`, 1500);
+            }
+          }
+
+          // Wait a moment then end turn
+          this.time.delayedCall(2000, () => {
+            this.endCurrentTurn();
+          });
+        }
+      );
     });
 
     this.gameState.on('TURN_CHANGED', (data: any) => {
@@ -143,6 +201,57 @@ export class GameScene extends Phaser.Scene {
       // Enable roll button only during roll phase
       this.gameUI.setRollButtonEnabled(data.phase === GamePhase.ROLL_PHASE);
     });
+
+    // Listen to round events from RoundManager
+    this.roundManager.on('ROUND_COMPLETE', (data: any) => {
+      console.log(`🏁 Round ${data.roundNumber} complete!`);
+      console.log('Mini-game type:', data.miniGameType);
+
+      // Get team assignments based on mini-game type
+      let teams: any = undefined;
+      let teamAssignment = undefined;
+      let soloAssignment = undefined;
+
+      if (data.miniGameType === '2v2') {
+        teams = this.roundManager.get2v2TeamAssignment();
+        teamAssignment = teams;
+      } else if (data.miniGameType === '1v3') {
+        teams = this.roundManager.get1v3SoloPlayer();
+        soloAssignment = teams;
+      }
+
+      // Show Round Summary UI
+      this.roundSummaryUI.show(
+        data,
+        this.gameState.getState().players,
+        teams,
+        () => {
+          // Callback when user clicks continue
+          if (data.miniGameType) {
+            // Start mini-game
+            this.miniGameManager.startMiniGame(
+              data.miniGameType,
+              this.gameState.getState().players,
+              teamAssignment,
+              soloAssignment,
+              (results) => {
+                // Mini-game complete - start next round
+                console.log('🎮 Mini-game results applied, starting next round...');
+                this.roundManager.startNextRound();
+              }
+            );
+          } else {
+            // No mini-game (last round) - just start next round
+            this.roundManager.startNextRound();
+          }
+        }
+      );
+    });
+
+    this.roundManager.on('ROUND_START', (data: any) => {
+      console.log(`🆕 Round ${data.roundNumber} started!`);
+      this.gameUI.showMessage(`Runde ${data.roundNumber} startet!`, 1500);
+    });
   }
 
   /**
@@ -150,10 +259,24 @@ export class GameScene extends Phaser.Scene {
    */
   private startNewTurn(): void {
     this.turnManager.startTurn();
-    this.updateUI();
+
+    // Update UI and show turn banner
+    const state = this.gameState.getState();
+    this.gameUI.updatePlayerInfo(
+      state.players,
+      state.currentPlayerIndex,
+      state.currentRound,
+      true  // Show banner at turn start
+    );
+    this.gameUI.updatePhase(state.gamePhase);
 
     // Zoom camera to current player
     this.zoomToCurrentPlayer(false);
+
+    // If current player is NPC, trigger auto-roll after 1 second
+    if (this.npcManager.isCurrentPlayerNPC()) {
+      this.npcManager.triggerNPCTurn(() => this.handleRollDice());
+    }
   }
 
   /**
@@ -211,14 +334,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Update UI elements
+   * Update UI elements (without showing turn banner)
    */
   private updateUI(): void {
     const state = this.gameState.getState();
     this.gameUI.updatePlayerInfo(
       state.players,
       state.currentPlayerIndex,
-      state.currentRound
+      state.currentRound,
+      false  // Don't show banner for regular updates
     );
     this.gameUI.updatePhase(state.gamePhase);
   }
@@ -270,10 +394,14 @@ export class GameScene extends Phaser.Scene {
 
   private drawPlayerTokens(): void {
     const players = this.gameState.getState().players;
-    const board = this.gameState.getState().board;
 
     players.forEach(player => {
-      const tile = board.tiles[player.position];
+      const tile = this.gameState.getTileAt(player.position);
+
+      if (!tile) {
+        console.error(`Could not find tile at position ${player.position} for player ${player.name}`);
+        return;
+      }
 
       // Use tile's x,y coordinates
       const x = tile.x;
@@ -284,19 +412,29 @@ export class GameScene extends Phaser.Scene {
       const offsetY = (Math.floor((player.id - 1) / 2)) * 20 - 10;
 
       const token = this.add.graphics();
+
+      // Draw circle at (0, 0) in local space
       token.fillStyle(player.color, 1);
-      token.fillCircle(x + offsetX, y + offsetY, 12); // Larger tokens
+      token.fillCircle(0, 0, 12);
       token.lineStyle(3, 0xffffff, 1);
-      token.strokeCircle(x + offsetX, y + offsetY, 12);
+      token.strokeCircle(0, 0, 12);
+
+      // Position the graphics object in world space
+      token.setPosition(x + offsetX, y + offsetY);
 
       this.playerTokens.push(token);
     });
   }
 
-  private updatePlayerTokens(): void {
-    // Re-draw all tokens (simple approach for now)
-    this.playerTokens.forEach(token => token.destroy());
-    this.playerTokens = [];
-    this.drawPlayerTokens();
+
+  /**
+   * Cleanup when scene shuts down
+   */
+  shutdown(): void {
+    // Cancel any pending NPC turns
+    this.npcManager?.destroy();
+
+    // Clean up round manager
+    this.roundManager?.destroy();
   }
 }

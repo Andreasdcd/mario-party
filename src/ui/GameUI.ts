@@ -68,26 +68,29 @@ export class GameUI {
     const height = this.scene.cameras.main.height;
 
     // Dice container positioned at bottom right
-    const diceContainer = this.scene.add.container(width - 180, height - 180);
+    // Reduced size and better positioning for 1.5x camera zoom
+    const diceContainer = this.scene.add.container(width - 140, height - 150);
 
-    // Dice display (shows the rolled number)
-    const diceBg = this.scene.add.rectangle(0, -50, 80, 80, 0xffffff, 1);
-    diceBg.setStrokeStyle(4, 0x2c3e50);
+    // Dice display (shows the rolled number) - SMALLER SIZE
+    const diceBg = this.scene.add.rectangle(0, -40, 60, 60, 0xffffff, 1);
+    diceBg.setStrokeStyle(3, 0x2c3e50);
+    diceBg.setDepth(0); // Background layer
 
-    this.diceDisplay = this.scene.add.text(0, -50, '?', {
-      fontSize: '48px',
+    this.diceDisplay = this.scene.add.text(0, -40, '?', {
+      fontSize: '36px',
       color: '#2c3e50',
       fontStyle: 'bold'
     });
     this.diceDisplay.setOrigin(0.5);
+    this.diceDisplay.setDepth(1); // Text on top
 
-    // Roll button
-    const buttonBg = this.scene.add.rectangle(0, 50, 140, 50, 0x27ae60, 1);
+    // Roll button - SMALLER SIZE
+    const buttonBg = this.scene.add.rectangle(0, 40, 120, 45, 0x27ae60, 1);
     buttonBg.setStrokeStyle(3, 0x2c3e50);
     buttonBg.setInteractive({ useHandCursor: true });
 
-    const buttonText = this.scene.add.text(0, 50, 'ROLL DICE', {
-      fontSize: '18px',
+    const buttonText = this.scene.add.text(0, 40, 'ROLL DICE', {
+      fontSize: '16px',
       color: '#ffffff',
       fontStyle: 'bold'
     });
@@ -115,7 +118,7 @@ export class GameUI {
 
     // Add all elements to container
     diceContainer.add([diceBg, this.diceDisplay, buttonBg, buttonText]);
-    diceContainer.setDepth(100);
+    diceContainer.setDepth(1000); // Very high depth to ensure always visible
     diceContainer.setScrollFactor(0); // Fixed to camera
 
     this.rollButton = diceContainer;
@@ -142,7 +145,7 @@ export class GameUI {
   /**
    * Update player info display
    */
-  public updatePlayerInfo(players: Player[], currentPlayerIndex: number, round: number): void {
+  public updatePlayerInfo(players: Player[], currentPlayerIndex: number, round: number, showBanner: boolean = false): void {
     const currentPlayer = players[currentPlayerIndex];
 
     // Clear existing player displays
@@ -195,8 +198,10 @@ export class GameUI {
     // Update turn indicator
     this.turnIndicator.setText(`Runde ${round} - ${currentPlayer.name}'s Tur`);
 
-    // Show big turn banner
-    this.showTurnBanner(currentPlayer.name);
+    // Show big turn banner only when requested (at turn start)
+    if (showBanner) {
+      this.showTurnBanner(currentPlayer.name);
+    }
   }
 
   /**
@@ -261,6 +266,13 @@ export class GameUI {
    * Show dice roll result with animation
    */
   public showDiceRoll(result: number): void {
+    console.log(`🎲 GameUI.showDiceRoll called with result: ${result}`);
+
+    // Ensure dice display is visible and at correct depth
+    this.diceDisplay.setVisible(true);
+    this.diceDisplay.setAlpha(1);
+    this.rollButton.setVisible(true);
+
     // Physical rolling animation - show random numbers rolling
     const rollDuration = 800; // Total roll duration
     const rollSteps = 12; // Number of random numbers to show
@@ -319,6 +331,10 @@ export class GameUI {
       [GamePhase.ROLL_PHASE]: '🎲 Tryk SPACE for at slå!',
       [GamePhase.MOVE_PHASE]: '🏃 Moving...',
       [GamePhase.TILE_PHASE]: '📍 Resolving tile effect...',
+      [GamePhase.ROUND_SUMMARY]: '📊 Runde afsluttet!',
+      [GamePhase.MINIGAME_INTRO]: '🎮 Mini-Game tid!',
+      [GamePhase.MINIGAME_PLAY]: '🎯 Spil mini-game!',
+      [GamePhase.MINIGAME_RESULT]: '🏆 Resultater!',
       [GamePhase.CHALLENGE_PHASE]: '⚔️ Challenge time!',
       [GamePhase.EVENT_PHASE]: '🎉 Event!',
       [GamePhase.GAME_OVER]: '🏆 Game Over!'
