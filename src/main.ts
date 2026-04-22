@@ -4,6 +4,7 @@
 
 import * as Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
+import { SetupScene } from './scenes/SetupScene';
 import { GameScene } from './scenes/GameScene';
 import { GAME_CONFIG } from './utils/Constants';
 
@@ -13,7 +14,10 @@ const config: Phaser.Types.Core.GameConfig = {
   height: GAME_CONFIG.HEIGHT,
   backgroundColor: GAME_CONFIG.BACKGROUND_COLOR,
   parent: 'game-container',
-  scene: [BootScene, GameScene],
+  scene: [BootScene, SetupScene, GameScene],
+  dom: {
+    createContainer: true
+  },
   physics: {
     default: 'arcade',
     arcade: {

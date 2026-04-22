@@ -44,7 +44,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    console.log('BootScene: Assets loaded, starting game...');
-    this.scene.start('GameScene');
+    console.log('BootScene: Assets loaded, starting player setup...');
+    this.scene.start('SetupScene');
   }
 }

@@ -15,7 +15,7 @@ export const GAME_RULES = {
   STARTING_COINS: 10,
   STARTING_STARS: 0,
   DIE_MIN: 1,
-  DIE_MAX: 6
+  DIE_MAX: 10  // Changed from 6 to 10
 };
 
 export const TILE_REWARDS = {

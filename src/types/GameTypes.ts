@@ -44,12 +44,16 @@ export interface Player {
 export interface Tile {
   position: number;
   type: TileType;
+  x: number;  // World X coordinate (required for camera system)
+  y: number;  // World Y coordinate (required for camera system)
 }
 
 export interface Board {
   id: string;
   name: string;
   tiles: Tile[];
+  worldWidth: number;   // Total world width for camera bounds
+  worldHeight: number;  // Total world height for camera bounds
 }
 
 export interface GameState {
