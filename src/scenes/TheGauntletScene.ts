@@ -8,7 +8,7 @@
 
 import * as Phaser from 'phaser';
 import { MiniGameBase } from '../systems/MiniGameBase';
-import { SoloAssignment } from '../types/MiniGameTypes';
+import { MiniGamePhase } from '../types/MiniGameTypes';
 
 interface Obstacle {
   x: number;
@@ -87,13 +87,13 @@ export class TheGauntletScene extends MiniGameBase {
 
     // Solo player info (left)
     const soloPlayer = this.players.find(p => p.id === this.soloPlayerId)!;
-    const soloTitle = this.add.text(50, 80, 'SOLO RUNNER', {
+    this.add.text(50, 80, 'SOLO RUNNER', {
       fontSize: '20px',
       color: '#e74c3c',
       fontStyle: 'bold'
     });
 
-    const soloName = this.add.text(50, 110, soloPlayer.name, {
+    this.add.text(50, 110, soloPlayer.name, {
       fontSize: '16px',
       color: '#ecf0f1'
     });
@@ -226,7 +226,6 @@ export class TheGauntletScene extends MiniGameBase {
    */
   private createSoloPlayer(): void {
     const width = this.cameras.main.width;
-    const trackX = width / 2 - this.trackWidth / 2;
 
     this.soloX = width / 2;
     this.soloY = this.trackStartY + 50;
@@ -252,8 +251,8 @@ export class TheGauntletScene extends MiniGameBase {
   /**
    * Update game state
    */
-  update(time: number, delta: number): void {
-    if (this.phase !== 2) return; // Only update during PLAYING phase
+  update(_time: number, delta: number): void {
+    if (this.phase !== MiniGamePhase.PLAYING) return; // Only update during PLAYING phase
 
     if (!this.isMoving) return;
 

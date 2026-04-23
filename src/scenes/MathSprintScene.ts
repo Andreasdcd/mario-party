@@ -8,7 +8,7 @@
 
 import * as Phaser from 'phaser';
 import { MiniGameBase } from '../systems/MiniGameBase';
-import { MiniGameDifficulty } from '../types/MiniGameTypes';
+import { MiniGamePhase } from '../types/MiniGameTypes';
 
 interface MathProblem {
   question: string;
@@ -91,7 +91,7 @@ export class MathSprintScene extends MiniGameBase {
       const x = startX + (index * spacing);
 
       // Player name with color indicator
-      const nameText = this.add.text(x, startY, player.name, {
+      this.add.text(x, startY, player.name, {
         fontSize: '16px',
         color: '#ecf0f1',
         fontStyle: 'bold'
@@ -402,7 +402,7 @@ export class MathSprintScene extends MiniGameBase {
    * Update timer
    */
   update(): void {
-    if (this.phase !== 2) return; // Only update during PLAYING phase
+    if (this.phase !== MiniGamePhase.PLAYING) return; // Only update during PLAYING phase
 
     if (this.currentProblem) {
       const elapsed = Date.now() - this.questionStartTime;

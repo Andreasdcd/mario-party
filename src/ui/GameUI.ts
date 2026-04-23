@@ -13,6 +13,8 @@ export class GameUI {
   private turnIndicator!: Phaser.GameObjects.Text;
   private phaseIndicator!: Phaser.GameObjects.Text;
   private onRollCallback?: () => void;
+  private currentTurnBanner?: Phaser.GameObjects.Container;
+  private diceReadyToRoll: boolean = false;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -22,15 +24,20 @@ export class GameUI {
    * Create all UI elements
    */
   public create(): void {
-    this.createPlayerInfoPanel();
+    this.createPlayerInfoPanel(); // Disabled inside method
     this.createDiceUI();
     this.createPhaseIndicator();
+
+    // Dice starts hidden - will be shown when player rolls
   }
 
   /**
    * Create the player information panel
+   * DISABLED - too much clutter on screen
    */
   private createPlayerInfoPanel(): void {
+    // Disabled to reduce screen clutter
+    return;
     const width = this.scene.cameras.main.width;
     const panelHeight = 100;
 
@@ -64,17 +71,12 @@ export class GameUI {
    * Create the dice UI (roll button and dice display)
    */
   private createDiceUI(): void {
-    const width = this.scene.cameras.main.width;
-    const height = this.scene.cameras.main.height;
-
-    // Dice container positioned at bottom right
-    // Reduced size and better positioning for 1.5x camera zoom
-    const diceContainer = this.scene.add.container(width - 140, height - 150);
+    // Start at 0,0 - will be positioned by update() method
+    const diceContainer = this.scene.add.container(0, 0);
 
     // Dice display (shows the rolled number) - SMALLER SIZE
     const diceBg = this.scene.add.rectangle(0, -40, 60, 60, 0xffffff, 1);
     diceBg.setStrokeStyle(3, 0x2c3e50);
-    diceBg.setDepth(0); // Background layer
 
     this.diceDisplay = this.scene.add.text(0, -40, '?', {
       fontSize: '36px',
@@ -82,7 +84,6 @@ export class GameUI {
       fontStyle: 'bold'
     });
     this.diceDisplay.setOrigin(0.5);
-    this.diceDisplay.setDepth(1); // Text on top
 
     // Roll button - SMALLER SIZE
     const buttonBg = this.scene.add.rectangle(0, 40, 120, 45, 0x27ae60, 1);
@@ -119,15 +120,19 @@ export class GameUI {
     // Add all elements to container
     diceContainer.add([diceBg, this.diceDisplay, buttonBg, buttonText]);
     diceContainer.setDepth(1000); // Very high depth to ensure always visible
-    diceContainer.setScrollFactor(0); // Fixed to camera
+    diceContainer.setVisible(false); // Start hidden
+    // NO scrollFactor - we'll position it manually relative to camera
 
     this.rollButton = diceContainer;
   }
 
   /**
    * Create phase indicator
+   * DISABLED - too much clutter on screen
    */
   private createPhaseIndicator(): void {
+    // Disabled to reduce screen clutter
+    return;
     const width = this.scene.cameras.main.width;
 
     this.phaseIndicator = this.scene.add.text(width / 2, 120, '', {
@@ -144,9 +149,17 @@ export class GameUI {
 
   /**
    * Update player info display
+   * DISABLED - info panel removed
    */
   public updatePlayerInfo(players: Player[], currentPlayerIndex: number, round: number, showBanner: boolean = false): void {
+    // Disabled - info panel removed to reduce clutter
     const currentPlayer = players[currentPlayerIndex];
+
+    // Only show turn banner
+    if (showBanner) {
+      this.showTurnBanner(currentPlayer.name);
+    }
+    return;
 
     // Clear existing player displays
     const existingPlayers = this.playerInfoPanel.getAll().filter(obj =>
@@ -206,8 +219,17 @@ export class GameUI {
 
   /**
    * Show a big turn banner with player's name
+   * Banner stays visible until hideTurnBannerAndShowDice() is called
    */
   private showTurnBanner(playerName: string): void {
+    // Remove previous banner if it exists
+    if (this.currentTurnBanner) {
+      this.currentTurnBanner.destroy();
+    }
+
+    // Dice is not ready to roll yet
+    this.diceReadyToRoll = false;
+
     const width = this.scene.cameras.main.width;
     const height = this.scene.cameras.main.height;
 
@@ -228,7 +250,7 @@ export class GameUI {
     });
     turnText.setOrigin(0.5);
 
-    const promptText = this.scene.add.text(0, 25, '🎲 Tryk SPACE for at slå', {
+    const promptText = this.scene.add.text(0, 25, '🎲 Tryk SPACE for at fortsætte', {
       fontSize: '18px',
       color: '#f39c12'
     });
@@ -245,21 +267,11 @@ export class GameUI {
       scale: 1,
       alpha: 1,
       duration: 400,
-      ease: 'Back.out',
-      onComplete: () => {
-        // Hold for a moment, then fade out
-        this.scene.time.delayedCall(2000, () => {
-          this.scene.tweens.add({
-            targets: bannerContainer,
-            alpha: 0,
-            duration: 300,
-            onComplete: () => {
-              bannerContainer.destroy();
-            }
-          });
-        });
-      }
+      ease: 'Back.out'
     });
+
+    // Store reference
+    this.currentTurnBanner = bannerContainer;
   }
 
   /**
@@ -324,8 +336,11 @@ export class GameUI {
 
   /**
    * Update phase indicator
+   * DISABLED - phase indicator removed
    */
   public updatePhase(phase: GamePhase): void {
+    // Disabled - phase indicator removed to reduce clutter
+    return;
     const phaseText = {
       [GamePhase.SETUP]: '⚙️ Setting up...',
       [GamePhase.ROLL_PHASE]: '🎲 Tryk SPACE for at slå!',
@@ -359,6 +374,89 @@ export class GameUI {
   }
 
   /**
+   * Show the dice UI
+   */
+  public showDice(): void {
+    if (this.rollButton) {
+      this.rollButton.setVisible(true);
+      this.update(); // Update position
+    }
+  }
+
+  /**
+   * Hide the dice UI
+   */
+  public hideDice(): void {
+    if (this.rollButton) {
+      this.rollButton.setVisible(false);
+    }
+  }
+
+  /**
+   * Hide turn banner and show dice with animation
+   * Called when player presses SPACE first time
+   */
+  public hideTurnBannerAndShowDice(onComplete?: () => void): void {
+    // Fade out banner
+    if (this.currentTurnBanner) {
+      this.scene.tweens.add({
+        targets: this.currentTurnBanner,
+        alpha: 0,
+        scale: 0.8,
+        duration: 300,
+        ease: 'Power2',
+        onComplete: () => {
+          if (this.currentTurnBanner) {
+            this.currentTurnBanner.destroy();
+            this.currentTurnBanner = undefined;
+          }
+        }
+      });
+    }
+
+    // Show and animate dice in
+    if (this.rollButton) {
+      // Set invisible state BEFORE making visible
+      this.rollButton.setScale(0.5);
+      this.rollButton.setAlpha(0);
+
+      // Now position and make visible
+      this.update(); // Update position
+      this.rollButton.setVisible(true);
+
+      this.scene.tweens.add({
+        targets: this.rollButton,
+        scale: 1,
+        alpha: 1,
+        duration: 400,
+        ease: 'Back.out',
+        delay: 150, // Slight delay after banner starts fading
+        onComplete: () => {
+          // Dice is now ready to roll
+          this.diceReadyToRoll = true;
+          if (onComplete) onComplete();
+        }
+      });
+    } else if (onComplete) {
+      onComplete();
+    }
+  }
+
+  /**
+   * Check if dice is ready to roll
+   */
+  public isDiceReadyToRoll(): boolean {
+    return this.diceReadyToRoll;
+  }
+
+  /**
+   * Reset dice ready state (after rolling)
+   */
+  public resetDiceReady(): void {
+    this.diceReadyToRoll = false;
+  }
+
+  /**
    * Set callback for when roll button is clicked
    */
   public onRollButtonClick(callback: () => void): void {
@@ -372,6 +470,22 @@ export class GameUI {
     if (this.onRollCallback) {
       this.onRollCallback();
     }
+  }
+
+  /**
+   * Update UI elements to follow camera viewport
+   * Call this after camera zooms/pans
+   */
+  public update(): void {
+    if (!this.rollButton) return;
+
+    // Position dice at the center of the camera's current view in world coordinates
+    const camera = this.scene.cameras.main;
+    const centerX = camera.worldView.centerX;
+    const centerY = camera.worldView.centerY;
+
+    this.rollButton.setPosition(centerX, centerY);
+    // Don't force visibility or alpha - those are controlled by show/hide methods
   }
 
   /**

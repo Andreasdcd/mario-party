@@ -34,6 +34,7 @@ export class GameScene extends Phaser.Scene {
   private roundSummaryUI!: RoundSummaryUI;
   private tileGraphics: Phaser.GameObjects.Graphics[] = [];
   private playerTokens: Phaser.GameObjects.Graphics[] = [];
+  private isRoundSummaryVisible: boolean = false;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -115,9 +116,15 @@ export class GameScene extends Phaser.Scene {
     if (immediate) {
       // Immediate jump (at game start)
       this.cameras.main.centerOn(tile.x, tile.y);
+      // Update UI immediately
+      this.gameUI.update();
     } else {
       // Smooth pan (during turn transitions)
       this.cameras.main.pan(tile.x, tile.y, 1000, 'Sine.easeInOut');
+      // Update UI after pan completes
+      this.time.delayedCall(1000, () => {
+        this.gameUI.update();
+      });
     }
   }
 
@@ -220,13 +227,18 @@ export class GameScene extends Phaser.Scene {
         soloAssignment = teams;
       }
 
+      // Hide dice during round summary
+      this.gameUI.hideDice();
+
       // Show Round Summary UI
+      this.isRoundSummaryVisible = true;
       this.roundSummaryUI.show(
         data,
         this.gameState.getState().players,
         teams,
         () => {
           // Callback when user clicks continue
+          this.isRoundSummaryVisible = false;
           if (data.miniGameType) {
             // Start mini-game
             this.miniGameManager.startMiniGame(
@@ -234,7 +246,7 @@ export class GameScene extends Phaser.Scene {
               this.gameState.getState().players,
               teamAssignment,
               soloAssignment,
-              (results) => {
+              () => {
                 // Mini-game complete - start next round
                 console.log('🎮 Mini-game results applied, starting next round...');
                 this.roundManager.startNextRound();
@@ -259,6 +271,9 @@ export class GameScene extends Phaser.Scene {
    */
   private startNewTurn(): void {
     this.turnManager.startTurn();
+
+    // Hide dice - will show when player rolls
+    this.gameUI.hideDice();
 
     // Update UI and show turn banner
     const state = this.gameState.getState();
@@ -285,10 +300,30 @@ export class GameScene extends Phaser.Scene {
   private handleRollDice(): void {
     const phase = this.gameState.getState().gamePhase;
 
+    // Block rolling if round summary is visible
+    if (this.isRoundSummaryVisible) {
+      console.log('Round summary is visible - cannot roll dice!');
+      return;
+    }
+
     if (phase !== GamePhase.ROLL_PHASE) {
       console.log('Not in roll phase!');
       return;
     }
+
+    // Check if dice is ready to roll
+    if (!this.gameUI.isDiceReadyToRoll()) {
+      // First SPACE press: Hide banner and show dice
+      console.log('First SPACE press - showing dice');
+      this.gameUI.hideTurnBannerAndShowDice();
+      return;
+    }
+
+    // Second SPACE press: Roll the dice
+    console.log('Second SPACE press - rolling dice');
+
+    // Reset ready state
+    this.gameUI.resetDiceReady();
 
     // Disable button during roll
     this.gameUI.setRollButtonEnabled(false);

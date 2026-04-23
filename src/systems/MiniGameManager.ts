@@ -15,7 +15,8 @@ import {
   MiniGameData,
   MiniGameResults,
   TeamAssignment,
-  SoloAssignment
+  SoloAssignment,
+  MiniGameDifficulty
 } from '../types/MiniGameTypes';
 import { Player } from '../types/GameTypes';
 
@@ -153,7 +154,7 @@ export class MiniGameManager {
    */
   private findMiniGameByType(type: MiniGameType): MiniGameConfig | undefined {
     // Find first mini-game that matches the type
-    for (const [id, config] of this.miniGameRegistry.entries()) {
+    for (const [_, config] of this.miniGameRegistry.entries()) {
       if (config.type === type) {
         return config;
       }

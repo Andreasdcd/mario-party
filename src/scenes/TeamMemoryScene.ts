@@ -8,7 +8,6 @@
 
 import * as Phaser from 'phaser';
 import { MiniGameBase } from '../systems/MiniGameBase';
-import { TeamAssignment } from '../types/MiniGameTypes';
 
 interface MemoryCard {
   id: number;
@@ -27,7 +26,6 @@ export class TeamMemoryScene extends MiniGameBase {
   private teamIndicator!: Phaser.GameObjects.Text;
   private team1ScoreText!: Phaser.GameObjects.Text;
   private team2ScoreText!: Phaser.GameObjects.Text;
-  private turnTimeout!: Phaser.Time.TimerEvent;
 
   // Card symbols (using emojis for visual appeal)
   private symbols = ['🍎', '🍌', '🍇', '🍊', '🍓', '🍉', '🍒', '🥝'];
@@ -72,7 +70,7 @@ export class TeamMemoryScene extends MiniGameBase {
     const team2Players = this.teamAssignment!.team2.map(id => this.players.find(p => p.id === id)!);
 
     // Team 1 display (left side)
-    const team1Title = this.add.text(100, 80, 'TEAM 1', {
+    this.add.text(100, 80, 'TEAM 1', {
       fontSize: '24px',
       color: '#3498db',
       fontStyle: 'bold'
@@ -80,7 +78,7 @@ export class TeamMemoryScene extends MiniGameBase {
 
     team1Players.forEach((player, index) => {
       const y = 120 + (index * 30);
-      const nameText = this.add.text(100, y, player.name, {
+      this.add.text(100, y, player.name, {
         fontSize: '16px',
         color: '#ecf0f1'
       });
